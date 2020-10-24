@@ -4,9 +4,12 @@
 
 # Programmed by BitMan64 with minor changes by CoolCat467
 
-import os
-import time
+import os, time
 from threading import Thread
+
+# To change back to original mode without clicks per seccond
+# regulation, change REGULATE to False.
+REGULATE = True
 
 try:
     from pynput.mouse import Button, Controller
@@ -14,7 +17,19 @@ try:
 except ImportError:
     print('Error: pynput not found!')
     print('Please install pynput for this program to function!')
-    sand = input('Press Return to Continue. ')
+    print('Would you like to attempt to automatically install pynput?')
+    autoinstall = input('(y/n) : ').lower() in ('y', 'yes')
+    if autoinstall:
+        print('\nAttempting automatic install...')
+        cmdout = os.system('pip3 install pynput --user')
+        if cmdout == 0:
+            print('pynput installed successfully! Please restart the program.')
+        else:
+            print('Attempted install returned with code %i.' % cmdout, file=os.sys.stderr)
+            autoinstall = False
+    if not autoinstall:
+        print('Please install pynput manually with "pip3 install pynput --user".')
+    sand = input('Press Press Return to Continue. ')
     os.abort()
 
 __title__ = 'Threaded Auto Clicker'
@@ -31,7 +46,7 @@ def delaySet():
         try:
             delay = 1 / int(input('Enter clicks per seccond: '))
         except ValueError:
-            print('Please enter a valid number.')
+            print('Please enter a valid number.\n')
         else:
             break
     return delay
@@ -58,11 +73,32 @@ class ClickMouse(Thread):
         self.active = False
     
     def run(self):
-        self.active = True
-        while self.active:
-            if self.click:
-                self.mouse.click(self.button)
-            time.sleep(self.delay)
+        if not REGULATE:
+            self.active = True
+            while self.active:
+                if self.click:
+                    self.mouse.click(self.button)
+                time.sleep(self.delay)
+        else:
+            self.active = True
+            last = time.time()
+            count = 0
+            originalDelay = self.delay
+            targetCps = 1 / originalDelay
+            while self.active:
+                if self.click:
+                    self.mouse.click(self.button)
+                    count += 1
+                    change = time.time() - last
+                    if change >= 1:
+                        cps = count / change
+                        last = time.time()
+                        if cps != targetCps:
+                            deltacps = targetCps - cps
+                            self.delay += (1/deltacps)
+                    time.sleep(self.delay)
+                else:
+                    time.sleep(0.001)
     pass
 
 def run():
